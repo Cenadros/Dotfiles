@@ -1,7 +1,9 @@
 #!/bin/bash
 
+pushd $DOTFILES_PATH
 git pull origin main
 . symlinks.bash
+popd
 
 pushd ${HOME}/.zprezto
 git pull && git submodule update --init --recursive
