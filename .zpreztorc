@@ -7,8 +7,8 @@ zstyle ':prezto:load' pmodule \
   'spectrum' \
   'utility' \
   'history' \
-  'completion' \
   'git' \
+  'completion' \
   'syntax-highlighting' \
   'history-substring-search' \
   'contrib-prompt' \
