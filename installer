@@ -2,12 +2,6 @@
 
 set -euo pipefail
 
-##? Setups the environment
-#?? 1.0.0
-##?
-##? Usage:
-##?    install
-
 echo "🚀 Welcome to the Dotfiles installer!"
 echo "-------------------------------------------------"
 echo
