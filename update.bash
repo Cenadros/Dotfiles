@@ -1,8 +1,9 @@
 #!/bin/bash
 
+export DOTFILES_PATH="$HOME/.dotfiles"
 pushd $DOTFILES_PATH
 git pull origin main
-. symlinks.bash
+bash symlinks.bash
 popd
 
 pushd ${HOME}/.zprezto
