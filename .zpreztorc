@@ -7,10 +7,10 @@ zstyle ':prezto:load' pmodule \
   'spectrum' \
   'utility' \
   'history' \
-  'git' \
   'completion' \
   'syntax-highlighting' \
   'history-substring-search' \
+  'autosuggestions' \
   'contrib-prompt' \
   'prompt'
 
