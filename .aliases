@@ -1,0 +1,29 @@
+#!/usr/bin/env zsh
+
+# GIT ALIAS
+alias gpull="git checkout master && git pull && git checkout development && git pull"
+alias gitPullProd="branch=$(git branch --show-current); gpull && git checkout $branch && git pull"
+alias gpublishAll="git checkout development && git pull && git push && git checkout master && git pull && git push"
+alias fetchToClean="git fetch -p && git checkout master && git pull && git branch -r --merged \
+  | grep -v '\*\|master\|release\|development' \
+  | sed 's/origin\///' > merged_branches.txt"
+alias cleanBranches="cat merged_branches.txt | xargs -n 1 git push --delete origin && rm -rf merged_branches.txt"
+alias gbr='for k in `git branch -r | perl -pe "s/^..(.*?)( ->.*)?$/\1/"`; do echo -e `git show --pretty=format:"%Cgreen%ci %Cblue%cr%Creset" $k -- | head -n 1`\\t$k; done | sort -r'
+alias t='git for-each-ref --format="%(color:green)%(refname:short) %(color:red)%(taggerdate:relative)" --sort="taggerdate" refs/tags'
+
+# LOCAL
+alias composer="php /usr/local/bin/composer.phar"
+alias subl='"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl"'
+
+# VAGRANT
+alias phpFix="vagrant ssh -c 'cd /vagrant; composer php-cs-fixer'"
+alias cUpdate="vagrant ssh -c 'cd /vagrant; composer update'"
+alias unitTest="vagrant ssh -c 'cd /vagrant; phpunit'"
+alias vdown="vagrant global-status --machine-readable | cut -d, -f5 | grep -B3 running | egrep -o '[0-9a-f]{7}' | xargs -n 1 -- vagrant halt"
+alias vup="ddown && vdown && vagrant up"
+alias vreload="vdown && vagrant destroy -f && vagrant up"
+alias vprov="vagrant provision"
+
+# DOCKER
+alias dup='ddown && vdown && make'
+alias ddown='echo "stopping docker containers..." && docker stop $(docker ps -a -q) > /dev/null && echo "docker containers stopped."'

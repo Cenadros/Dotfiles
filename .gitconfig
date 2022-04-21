@@ -1,0 +1,7 @@
+# [commit]
+#     gpgsign = true
+[core]
+    excludesfile = ~/.gitignore
+[user]
+	email = alejandro@runroom.com
+	name = Alex Sánchez
