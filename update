@@ -1,9 +1,7 @@
 #!/bin/bash
 
-export DOTFILES_PATH="$HOME/.dotfiles"
-pushd $DOTFILES_PATH
-git pull origin main
-bash symlinks.bash
+pushd ${HOME}/.dotfiles
+git pull
 popd
 
 pushd ${HOME}/.zprezto
@@ -13,3 +11,5 @@ popd
 pushd ${HOME}/.nvm
 git fetch --tags origin && git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)`
 popd
+
+"$HOME/.dotfiles/symlinks" self install

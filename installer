@@ -8,6 +8,6 @@ echo
 export DOTFILES_PATH="$HOME/.dotfiles"
 echo "👉  Cloning into: '$DOTFILES_PATH'"
 
-git clone --depth 1 git@github.com:Cenadros/Dotfiles.git "$DOTFILES_PATH"
+#git clone --depth 1 git@github.com:Cenadros/Dotfiles.git "$DOTFILES_PATH"
 
-bash "$DOTFILES_PATH"/install.bash
+"$DOTFILES_PATH/install" self install

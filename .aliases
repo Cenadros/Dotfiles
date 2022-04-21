@@ -25,4 +25,4 @@ alias dup='ddown && vdown && make'
 alias ddown='echo "stopping docker containers..." && docker stop $(docker ps -a -q) > /dev/null && echo "docker containers stopped."'
 
 #DotEnv
-alias dot_update='bash ~/.dotfiles/update.bash'
+alias dot_update='bash ~/.dotfiles/update'
