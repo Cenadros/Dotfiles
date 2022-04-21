@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo "👉  Cloning prezto into: ${HOME}/.zprezto"
+git clone --recursive https://github.com/sorin-ionescu/prezto.git "${HOME}/.zprezto" 2> /dev/null || git -C "${HOME}/.zprezto" pull
+
+echo "👉  Cloning prezto-contrib into: ${HOME}/.zprezto/contrib"
+git clone --recurse-submodules https://github.com/belak/prezto-contrib "${HOME}/.zprezto/contrib" 2> /dev/null || git -C "${HOME}/.zprezto/contrib" pull
+
+echo "👉  Cloning nvm into: ${HOME}/.nvm"
+git clone https://github.com/nvm-sh/nvm.git "${HOME}/.nvm" 2> /dev/null || git -C "${HOME}/.nvm" checkout `git -C "${HOME}/.nvm" describe --abbrev=0 --tags --match "v[0-9]*" $(git -C "${HOME}/.nvm" rev-list --tags --max-count=1)`
+
+echo "👉  Checking nvm latest version"
+pushd ${HOME}/.nvm
+  git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)`
+popd
+
+bash "$HOME/.dotfiles/scripts/symlinks"

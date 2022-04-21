@@ -1,6 +1,4 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
+#!/bin/bash
 
 echo "🚀 Welcome to the Dotfiles installer!"
 echo "-------------------------------------------------"
@@ -8,6 +6,6 @@ echo
 export DOTFILES_PATH="$HOME/.dotfiles"
 echo "👉  Cloning into: '$DOTFILES_PATH'"
 
-#git clone --depth 1 git@github.com:Cenadros/Dotfiles.git "$DOTFILES_PATH"
+git clone --depth 1 git@github.com:Cenadros/Dotfiles.git "$DOTFILES_PATH" 2> /dev/null || git -C "$DOTFILES_PATH" pull
 
-"$DOTFILES_PATH/install" self install
+bash "$DOTFILES_PATH/scripts/install"

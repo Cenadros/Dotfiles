@@ -1,6 +1,4 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
+#!/bin/bash
 
 echo "👉  Updating symlinks..."
 cd "$(dirname "${BASH_SOURCE[0]}")" \
@@ -36,7 +34,7 @@ create_symlinks() {
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     for currentFile in "${FILES_TO_SYMLINK[@]}"; do
-        sourceFile="$(pwd)/$currentFile"
+        sourceFile="$HOME/.dotfiles/dotfiles/$currentFile"
         targetFile="$HOME/$currentFile"
 
         if [ ! -e "$targetFile" ] || $skipQuestions; then
