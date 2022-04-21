@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 git clone --recursive https://github.com/sorin-ionescu/prezto.git "${HOME}/.zprezto"
 git clone --recurse-submodules https://github.com/belak/prezto-contrib "${HOME}/.zprezto/contrib"
 git clone https://github.com/nvm-sh/nvm.git "${HOME}/.nvm"

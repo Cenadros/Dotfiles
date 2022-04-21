@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
+echo "👉  Updating symlinks..."
 cd "$(dirname "${BASH_SOURCE[0]}")" \
     && . "utils.bash"
 

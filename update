@@ -1,13 +1,21 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
+set -euo pipefail
+
+echo "🚀 Updating Dotfiles"
+echo "-------------------------------------------------"
+echo
+echo "👉  Updating dotfiles repository..."
 pushd ${HOME}/.dotfiles
 git pull
 popd
 
+echo "👉  Updating prezto repository..."
 pushd ${HOME}/.zprezto
 git pull && git submodule update --init --recursive
 popd
 
+echo "👉  Updating nvm repository..."
 pushd ${HOME}/.nvm
 git fetch --tags origin && git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)`
 popd
