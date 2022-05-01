@@ -6,6 +6,6 @@ echo
 export DOTFILES_PATH="$HOME/.dotfiles"
 echo "👉  Cloning into: '$DOTFILES_PATH'"
 
-git clone --depth 1 git@github.com:Cenadros/Dotfiles.git "$DOTFILES_PATH" 2> /dev/null || git -C "$DOTFILES_PATH" pull
+git clone --depth 1 https://github.com/Cenadros/Dotfiles.git "$DOTFILES_PATH" 2> /dev/null || git -C "$DOTFILES_PATH" pull
 
 bash "$DOTFILES_PATH/scripts/install"
