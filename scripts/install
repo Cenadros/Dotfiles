@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "👉  Installing ZSH"
+sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
 echo "👉  Cloning prezto into: ${HOME}/.zprezto"
 git clone --recursive https://github.com/sorin-ionescu/prezto.git "${HOME}/.zprezto" 2> /dev/null || git -C "${HOME}/.zprezto" pull
 
