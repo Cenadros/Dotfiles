@@ -2,8 +2,11 @@
 
 # GIT ALIAS
 alias gpull="git checkout master && git pull && git checkout development && git pull"
+alias gpullLoopBack='f(){ gpull | git checkout $1 }; f $(gbranch)'
 alias gitPullProd="branch=$(git branch --show-current); gpull && git checkout $branch && git pull"
 alias gpublishAll="git checkout development && git pull && git push && git checkout master && git pull && git push"
+alias gversion="git rev-parse --short HEAD"
+alias gbranch="git rev-parse --abbrev-ref HEAD"
 alias fetchToClean="git fetch -p && git checkout master && git pull && git branch -r --merged \
   | grep -v '\*\|master\|release\|development' \
   | sed 's/origin\///' > merged_branches.txt"
