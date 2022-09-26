@@ -1,5 +1,47 @@
 #!/bin/bash
 
+echo "👉  Installing git, zsh and curl"
+sudo apt-get install git zsh curl -y > /dev/null
+echo "👉  Changing default terminal to zsh"
+chsh -s $(which zsh) > /dev/null
+
+
+echo "👉  Installing docker"
+case $(uname | tr '[:upper:]' '[:lower:]') in
+  linux*)
+    sudo apt-get update > /dev/null
+
+    sudo apt-get install \
+        ca-certificates \
+        curl \
+        gnupg \
+        lsb-release -y > /dev/null
+
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    sudo apt-get update > /dev/null
+    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y > /dev/null
+
+    sudo groupadd docker
+    sudo usermod -aG docker $USER
+    ;;
+  *)
+    echo "Please refer to the official documentation for your Operating System: https://docs.docker.com/desktop/"
+    echo -n "Would you like to proceed with the next steps? (y/n)"
+    read reply
+
+    if [ "$reply" = n -o "$reply" = N ]
+    then
+       exit
+    fi
+    ;;
+esac
+
 echo "👉  Cloning prezto into: ${HOME}/.zprezto"
 git clone --recursive https://github.com/sorin-ionescu/prezto.git "${HOME}/.zprezto" 2> /dev/null || git -C "${HOME}/.zprezto" pull
 
@@ -15,3 +57,14 @@ pushd ${HOME}/.nvm
 popd
 
 bash "$HOME/.dotfiles/scripts/symlinks"
+
+echo "👉  A system reboot is required to apply all changes"
+echo -n "Would you like to proceed right now? (y/n)"
+read reply
+
+if [ "$reply" = y -o "$reply" = Y ]
+then
+   sudo reboot
+else
+   echo "Reboot cancelled"
+fi
