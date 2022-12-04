@@ -1,12 +1,4 @@
 #!/bin/bash
-export DOTFILES_PATH="$HOME/.dotfiles"
-
-echo "👉  Installing git, zsh and curl"
-sudo apt-get install git zsh curl -y > /dev/null
-
-echo "👉  Cloning into: '$DOTFILES_PATH'"
-git clone --depth 1 https://github.com/Cenadros/Dotfiles.git "$DOTFILES_PATH" 2> /dev/null || git -C "$DOTFILES_PATH" pull
-
 echo "👉  Changing default terminal to zsh"
 chsh -s $(which zsh) > /dev/null
 
