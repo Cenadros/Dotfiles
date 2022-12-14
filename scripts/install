@@ -58,8 +58,8 @@ bash "$HOME/.dotfiles/scripts/symlinks"
 echo "👉  Installing brew"
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-echo '# Set PATH, MANPATH, etc., for Homebrew.' >> /home/alex/.zprofile
-echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/alex/.zprofile
+echo '# Set PATH, MANPATH, etc., for Homebrew.' >> ${HOME}/.zprofile
+echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ${HOME}/.zprofile
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 sudo apt-get install build-essential -Y
 
