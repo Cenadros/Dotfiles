@@ -66,6 +66,9 @@ sudo apt-get install build-essential -Y
 echo "👉  Installing mkcert"
 brew install mkcert
 
+echo "👉  Installing make"
+sudo apt install make -Y
+
 echo "👉  A system reboot is required to apply all changes"
 echo -n "Would you like to proceed right now? (y/n)"
 read reply
