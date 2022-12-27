@@ -53,13 +53,11 @@ pushd ${HOME}/.nvm
   git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)`
 popd
 
+echo "👉  Symlinks"
 bash "$HOME/.dotfiles/scripts/symlinks"
 
 echo "👉  Installing brew"
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-echo '# Set PATH, MANPATH, etc., for Homebrew.' >> ${HOME}/.zprofile
-echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ${HOME}/.zprofile
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 sudo apt-get install build-essential -Y
 
@@ -69,6 +67,13 @@ brew install mkcert
 echo "👉  Installing make"
 sudo apt install make -Y
 
+echo "👉  Git config"
+read -p "Type in your mail for gitconfig: " input
+sed -i "s/test@test.com/$input/g" ${HOME}/.dotfiles/dotfiles/.gitconfig
+
+read -p "Type in your name for gitconfig: " input
+sed -i "s/test/$input/g" ${HOME}/.dotfiles/dotfiles/.gitconfig
+
 echo "👉  A system reboot is required to apply all changes"
 echo -n "Would you like to proceed right now? (y/n)"
 read reply
@@ -77,5 +82,5 @@ if [ "$reply" = y -o "$reply" = Y ]
 then
    sudo reboot
 else
-   echo "Reboot cancelled"
+   echo "Don't forget to restart your computer manually."
 fi

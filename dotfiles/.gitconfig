@@ -1,5 +1,5 @@
 [core]
     excludesfile = ~/.gitignore
 [user]
-	email = alejandro@runroom.com
-	name = Alex Sánchez
+	email = test@test.com
+	name = test
