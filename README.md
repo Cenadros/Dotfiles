@@ -4,11 +4,7 @@ This repo is my personal configuration for my dotfiles. You can fork and customi
 
 ## Installation
 
-First, make sure you have `git`, `zsh` and `curl` installed by typing in your terminal:
-```bash
-sudo apt install git zsh curl -y
-```
-Then execute the [`installer`](installer) from your terminal.
+Just execute the [`installer`](installer) from your terminal.
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/Cenadros/Dotfiles/main/installer)

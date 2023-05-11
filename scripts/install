@@ -1,8 +1,16 @@
 #!/bin/bash
+
+export DOTFILES_PATH="$HOME/.dotfiles"
+
+echo "👉  Copying wsl.conf file"
+sudo cp "$DOTFILES_PATH/wsl.conf" /etc/wsl.conf
+
+# Set up zsh as default shell
 echo "👉  Changing default terminal to zsh"
 chsh -s $(which zsh) > /dev/null
 
 
+# Set up Docker
 echo "👉  Installing docker"
 case $(uname | tr '[:upper:]' '[:lower:]') in
   linux*)
@@ -26,6 +34,13 @@ case $(uname | tr '[:upper:]' '[:lower:]') in
 
     sudo groupadd docker
     sudo usermod -aG docker $USER
+    ;;
+  darwin*)
+    # Download and install Docker for Mac
+    curl -fsSL https://download.docker.com/mac/stable/Docker.dmg -o Docker.dmg
+    open Docker.dmg
+    cp -R /Volumes/Docker/Docker.app /Applications/
+    rm Docker.dmg
     ;;
   *)
     echo "Please refer to the official documentation for your Operating System: https://docs.docker.com/desktop/"
@@ -53,26 +68,33 @@ pushd ${HOME}/.nvm
   git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)`
 popd
 
-echo "👉  Symlinks"
-bash "$HOME/.dotfiles/scripts/symlinks"
-
 echo "👉  Installing brew"
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+echo '# Set PATH, MANPATH, etc., for Homebrew.' >> ${HOME}/.zprofile
+echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ${HOME}/.zprofile
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 sudo apt-get install build-essential -Y
 
 echo "👉  Installing mkcert"
 brew install mkcert
 
+echo "👉  Generating mkcert certificates"
+mkcert -install
+mkcert -CAROOT
+
 echo "👉  Installing make"
 sudo apt install make -Y
 
 echo "👉  Git config"
 read -p "Type in your mail for gitconfig: " input
-sed -i "s/test@test.com/$input/g" ${HOME}/.dotfiles/dotfiles/.gitconfig
+sed -i "s/test@test.com/$input/g" ${DOTFILES_PATH}/dotfiles/.gitconfig
 
 read -p "Type in your name for gitconfig: " input
-sed -i "s/test/$input/g" ${HOME}/.dotfiles/dotfiles/.gitconfig
+sed -i "s/test/$input/g" ${DOTFILES_PATH}/dotfiles/.gitconfig
+
+echo "👉  Symlinks"
+bash "$DOTFILES_PATH/scripts/symlinks"
 
 echo "👉  A system reboot is required to apply all changes"
 echo -n "Would you like to proceed right now? (y/n)"
