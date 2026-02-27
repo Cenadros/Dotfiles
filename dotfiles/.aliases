@@ -25,7 +25,7 @@ alias vprov="vagrant provision"
 
 # DOCKER
 alias dup='ddown && vdown && make'
-alias ddown='echo "stopping docker containers..." && docker stop $(docker ps -a -q) > /dev/null && echo "docker containers stopped."'
+alias ddown='containers=$(docker ps -a -q 2>/dev/null); if [ -n "$containers" ]; then echo "stopping docker containers..." && docker stop $containers > /dev/null && echo "docker containers stopped."; else echo "no docker containers running."; fi'
 
 #DotEnv
 alias dot_update='bash ~/.dotfiles/scripts/update'

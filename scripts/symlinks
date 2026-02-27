@@ -34,14 +34,14 @@ create_symlinks() {
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     for currentFile in "${FILES_TO_SYMLINK[@]}"; do
-        sourceFile="$HOME/.dotfiles/dotfiles/$currentFile"
+        sourceFile="${DOTFILES_PATH:-$HOME/.dotfiles}/dotfiles/$currentFile"
         targetFile="$HOME/$currentFile"
 
         if [ ! -e "$targetFile" ] || $skipQuestions; then
             execute \
-                "ln -fs $sourceFile $targetFile" \
+                "ln -fs '$sourceFile' '$targetFile'" \
                 "$targetFile → $sourceFile"
-        elif [ "$(readlink "$targetFile")" == "$sourceFile" ]; then
+        elif [ "$(readlink "$targetFile")" = "$sourceFile" ]; then
             print_success "$targetFile → $sourceFile"
         else
             if ! $skipQuestions; then
@@ -50,7 +50,7 @@ create_symlinks() {
                     rm -rf "$targetFile"
 
                     execute \
-                        "ln -fs $sourceFile $targetFile" \
+                        "ln -fs '$sourceFile' '$targetFile'" \
                         "$targetFile → $sourceFile"
                 else
                     print_error "$targetFile → $sourceFile"

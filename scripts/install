@@ -1,108 +1,294 @@
 #!/bin/bash
+set -e
 
 export DOTFILES_PATH="$HOME/.dotfiles"
 
-echo "👉  Copying wsl.conf file"
-sudo cp "$DOTFILES_PATH/wsl.conf" /etc/wsl.conf
+cd "$(dirname "${BASH_SOURCE[0]}")" \
+    && . "utils.bash"
 
-# Set up zsh as default shell
+OS="$(get_os)"
+
+echo ""
+echo "🖥  Detected: $(get_os_name) ($(get_arch))"
+echo "-------------------------------------------------"
+echo ""
+
+# ===========================================================================
+# WSL configuration (only on WSL)
+# ===========================================================================
+
+if is_wsl; then
+    echo "👉  Copying wsl.conf file"
+    sudo cp "$DOTFILES_PATH/wsl.conf" /etc/wsl.conf
+fi
+
+# ===========================================================================
+# Homebrew (install early — needed by later steps on macOS)
+# ===========================================================================
+
+if ! cmd_exists brew; then
+    echo "👉  Installing Homebrew"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+# Make brew available in the current session
+BREW_PREFIX="$(get_brew_prefix)"
+if [ -f "${BREW_PREFIX}/bin/brew" ]; then
+    eval "$(${BREW_PREFIX}/bin/brew shellenv)"
+fi
+
+# ===========================================================================
+# Default shell → zsh
+# ===========================================================================
+
 echo "👉  Changing default terminal to zsh"
-chsh -s $(which zsh) > /dev/null
-
-
-# Set up Docker
-echo "👉  Installing docker"
-case $(uname | tr '[:upper:]' '[:lower:]') in
-  linux*)
-    sudo apt-get update > /dev/null
-
-    sudo apt-get install \
-        ca-certificates \
-        curl \
-        gnupg \
-        lsb-release -y > /dev/null
-
-    sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-    sudo apt-get update > /dev/null
-    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y > /dev/null
-
-    sudo groupadd docker
-    sudo usermod -aG docker $USER
-    ;;
-  darwin*)
-    # Download and install Docker for Mac
-    curl -fsSL https://download.docker.com/mac/stable/Docker.dmg -o Docker.dmg
-    open Docker.dmg
-    cp -R /Volumes/Docker/Docker.app /Applications/
-    rm Docker.dmg
-    ;;
-  *)
-    echo "Please refer to the official documentation for your Operating System: https://docs.docker.com/desktop/"
-    echo -n "Would you like to proceed with the next steps? (y/n)"
-    read reply
-
-    if [ "$reply" = n -o "$reply" = N ]
-    then
-       exit
+ZSH_PATH="$(command -v zsh)"
+if [ -n "$ZSH_PATH" ] && [ "$SHELL" != "$ZSH_PATH" ]; then
+    # Ensure zsh is listed in /etc/shells (required by chsh)
+    if ! grep -qx "$ZSH_PATH" /etc/shells 2>/dev/null; then
+        echo "$ZSH_PATH" | sudo tee -a /etc/shells > /dev/null 2>&1 || true
     fi
-    ;;
+    chsh -s "$ZSH_PATH" < /dev/null > /dev/null 2>&1 || {
+        print_warning "Could not change shell automatically. Run: chsh -s $ZSH_PATH"
+    }
+fi
+
+# ===========================================================================
+# Docker / Container runtime
+# ===========================================================================
+
+install_docker_linux() {
+    local distro
+    distro="$(get_os)"
+
+    case "$distro" in
+        debian)
+            pkg_update
+
+            pkg_install ca-certificates curl gnupg lsb-release
+
+            sudo install -m 0755 -d /etc/apt/keyrings
+            if [ ! -f /etc/apt/keyrings/docker.asc ]; then
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+                    sudo tee /etc/apt/keyrings/docker.asc > /dev/null
+                sudo chmod a+r /etc/apt/keyrings/docker.asc
+            fi
+
+            # Determine the correct Docker repo URL based on distro
+            local docker_distro="ubuntu"
+            if [ -f /etc/os-release ]; then
+                . /etc/os-release
+                case "$ID" in
+                    debian) docker_distro="debian" ;;
+                    *)      docker_distro="ubuntu" ;;
+                esac
+            fi
+
+            echo \
+              "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${docker_distro} \
+              $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+              sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+            pkg_update
+            pkg_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            ;;
+
+        fedora)
+            sudo dnf -y install dnf-plugins-core > /dev/null
+            sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo 2>/dev/null || true
+            pkg_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            sudo systemctl start docker 2>/dev/null || true
+            sudo systemctl enable docker 2>/dev/null || true
+            ;;
+
+        arch)
+            pkg_install docker docker-compose docker-buildx
+            sudo systemctl start docker 2>/dev/null || true
+            sudo systemctl enable docker 2>/dev/null || true
+            ;;
+
+        suse)
+            sudo zypper install -y docker docker-compose > /dev/null
+            sudo systemctl start docker 2>/dev/null || true
+            sudo systemctl enable docker 2>/dev/null || true
+            ;;
+
+        *)
+            print_warning "Unknown Linux distro. Install Docker manually: https://docs.docker.com/engine/install/"
+            return
+            ;;
+    esac
+
+    # Add user to docker group
+    if ! groups "$USER" | grep -q docker; then
+        sudo groupadd docker 2>/dev/null || true
+        sudo usermod -aG docker "$USER"
+        print_warning "Added $USER to docker group. Log out/in for this to take effect."
+    fi
+}
+
+install_docker_macos() {
+    echo ""
+    echo "    Choose your container runtime:"
+    echo ""
+    echo "    1) OrbStack  (lightweight, fast, recommended)"
+    echo "    2) Docker Desktop"
+    echo "    3) Skip"
+    echo ""
+    read -r -p "    Your choice [1/2/3]: " docker_choice
+
+    case "$docker_choice" in
+        1)
+            echo "👉  Installing OrbStack..."
+            if cmd_exists brew; then
+                brew install --cask orbstack
+            else
+                print_error "Homebrew is required to install OrbStack."
+                echo "    Install manually from: https://orbstack.dev"
+            fi
+            ;;
+        2)
+            echo "👉  Installing Docker Desktop..."
+            if cmd_exists brew; then
+                brew install --cask docker
+            else
+                print_error "Homebrew is required to install Docker Desktop."
+                echo "    Install manually from: https://www.docker.com/products/docker-desktop/"
+            fi
+            ;;
+        3)
+            echo "    Skipping container runtime installation."
+            ;;
+        *)
+            echo "    Invalid choice. Skipping container runtime installation."
+            ;;
+    esac
+}
+
+echo "👉  Installing container runtime"
+case "$OS" in
+    debian|fedora|arch|suse|linux)
+        install_docker_linux
+        ;;
+    macos)
+        install_docker_macos
+        ;;
+    *)
+        print_warning "Please install Docker manually: https://docs.docker.com/desktop/"
+        echo -n "    Would you like to proceed with the next steps? (y/n) "
+        read -r reply
+        if [ "$reply" = n ] || [ "$reply" = N ]; then
+            exit
+        fi
+        ;;
 esac
 
+# ===========================================================================
+# Prezto (zsh framework)
+# ===========================================================================
+
 echo "👉  Cloning prezto into: ${HOME}/.zprezto"
-git clone --recursive https://github.com/sorin-ionescu/prezto.git "${HOME}/.zprezto" 2> /dev/null || git -C "${HOME}/.zprezto" pull
+git clone --recursive https://github.com/sorin-ionescu/prezto.git "${HOME}/.zprezto" 2> /dev/null || \
+    git -C "${HOME}/.zprezto" pull
 
 echo "👉  Cloning prezto-contrib into: ${HOME}/.zprezto/contrib"
-git clone --recurse-submodules https://github.com/belak/prezto-contrib "${HOME}/.zprezto/contrib" 2> /dev/null || git -C "${HOME}/.zprezto/contrib" pull
+git clone --recurse-submodules https://github.com/belak/prezto-contrib "${HOME}/.zprezto/contrib" 2> /dev/null || \
+    git -C "${HOME}/.zprezto/contrib" pull
+
+# ===========================================================================
+# NVM (Node Version Manager)
+# ===========================================================================
 
 echo "👉  Cloning nvm into: ${HOME}/.nvm"
-git clone https://github.com/nvm-sh/nvm.git "${HOME}/.nvm" 2> /dev/null || git -C "${HOME}/.nvm" checkout `git -C "${HOME}/.nvm" describe --abbrev=0 --tags --match "v[0-9]*" $(git -C "${HOME}/.nvm" rev-list --tags --max-count=1)`
+git clone https://github.com/nvm-sh/nvm.git "${HOME}/.nvm" 2> /dev/null || true
 
 echo "👉  Checking nvm latest version"
-pushd ${HOME}/.nvm
-  git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)`
-popd
+pushd "${HOME}/.nvm" > /dev/null
+    git fetch --tags origin
+    git checkout "$(git describe --abbrev=0 --tags --match "v[0-9]*" "$(git rev-list --tags --max-count=1)")"
+popd > /dev/null
 
-echo "👉  Installing brew"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# ===========================================================================
+# Build tools
+# ===========================================================================
 
-echo '# Set PATH, MANPATH, etc., for Homebrew.' >> ${HOME}/.zprofile
-echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ${HOME}/.zprofile
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-sudo apt-get install build-essential -Y
+echo "👉  Installing build tools"
+case "$OS" in
+    debian)
+        pkg_install build-essential make
+        ;;
+    fedora)
+        sudo dnf groupinstall -y "Development Tools" > /dev/null 2>&1 || true
+        pkg_install make
+        ;;
+    arch)
+        pkg_install base-devel make
+        ;;
+    suse)
+        sudo zypper install -y -t pattern devel_basis > /dev/null 2>&1 || true
+        pkg_install make
+        ;;
+    macos)
+        # Xcode CLI tools already provide build essentials
+        ;;
+esac
+
+# ===========================================================================
+# mkcert (local HTTPS certificates)
+# ===========================================================================
 
 echo "👉  Installing mkcert"
-brew install mkcert
+if cmd_exists brew; then
+    brew install mkcert 2>/dev/null || true
+else
+    pkg_install mkcert 2>/dev/null || print_warning "Could not install mkcert automatically."
+fi
 
-echo "👉  Generating mkcert certificates"
-mkcert -install
-mkcert -CAROOT
+if cmd_exists mkcert; then
+    echo "👉  Generating mkcert certificates"
+    mkcert -install 2>/dev/null || true
+fi
 
-echo "👉  Installing make"
-sudo apt install make -Y
+# ===========================================================================
+# Git configuration
+# ===========================================================================
 
 echo "👉  Git config"
-read -p "Type in your mail for gitconfig: " input
-sed -i "s/test@test.com/$input/g" ${DOTFILES_PATH}/dotfiles/.gitconfig
+read -r -p "    Type in your email for gitconfig: " git_email
+read -r -p "    Type in your name for gitconfig: " git_name
 
-read -p "Type in your name for gitconfig: " input
-sed -i "s/test/$input/g" ${DOTFILES_PATH}/dotfiles/.gitconfig
+if [ -n "$git_email" ]; then
+    sed_i "s/test@test.com/$git_email/g" "${DOTFILES_PATH}/dotfiles/.gitconfig"
+fi
+if [ -n "$git_name" ]; then
+    sed_i "s/name = test$/name = $git_name/g" "${DOTFILES_PATH}/dotfiles/.gitconfig"
+fi
+
+# ===========================================================================
+# Symlinks
+# ===========================================================================
 
 echo "👉  Symlinks"
 bash "$DOTFILES_PATH/scripts/symlinks"
 
-echo "👉  A system reboot is required to apply all changes"
-echo -n "Would you like to proceed right now? (y/n)"
-read reply
+# ===========================================================================
+# Done — reboot prompt (only useful on Linux / WSL)
+# ===========================================================================
 
-if [ "$reply" = y -o "$reply" = Y ]
-then
-   sudo reboot
+echo ""
+echo "✅  Installation complete!"
+
+if [ "$OS" != "macos" ]; then
+    echo ""
+    echo "👉  A system reboot is recommended to apply all changes."
+    echo -n "    Would you like to reboot now? (y/n) "
+    read -r reply
+
+    if [ "$reply" = y ] || [ "$reply" = Y ]; then
+        sudo reboot
+    else
+        echo "    Don't forget to restart your computer (or log out/in) manually."
+    fi
 else
-   echo "Don't forget to restart your computer manually."
+    echo "    Open a new terminal window to start using your new configuration."
 fi

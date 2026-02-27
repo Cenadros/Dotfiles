@@ -1,5 +1,178 @@
 #!/bin/bash
 
+# ===========================================================================
+# OS / Platform detection
+# ===========================================================================
+
+get_os() {
+    local os=""
+    local kernelName=""
+
+    kernelName="$(uname -s)"
+
+    if [ "$kernelName" = "Darwin" ]; then
+        os="macos"
+    elif [ "$kernelName" = "Linux" ]; then
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            case "$ID" in
+                ubuntu|debian|linuxmint|pop|elementary)
+                    os="debian" ;;
+                fedora|rhel|centos|rocky|alma)
+                    os="fedora" ;;
+                arch|manjaro|endeavouros)
+                    os="arch" ;;
+                opensuse*|sles)
+                    os="suse" ;;
+                *)
+                    os="linux" ;;
+            esac
+        elif [ -f /etc/lsb-release ]; then
+            os="debian"
+        elif [ -f /etc/redhat-release ]; then
+            os="fedora"
+        else
+            os="linux"
+        fi
+    else
+        os="$kernelName"
+    fi
+
+    printf "%s" "$os"
+}
+
+get_os_version() {
+    local os=""
+    local version=""
+
+    os="$(get_os)"
+
+    if [ "$os" = "macos" ]; then
+        version="$(sw_vers -productVersion)"
+    elif [ -f /etc/os-release ]; then
+        . /etc/os-release
+        version="$VERSION_ID"
+    fi
+
+    printf "%s" "$version"
+}
+
+get_os_name() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        printf "%s" "$PRETTY_NAME"
+    elif [ "$(get_os)" = "macos" ]; then
+        printf "macOS %s" "$(sw_vers -productVersion)"
+    else
+        printf "%s" "$(uname -s)"
+    fi
+}
+
+is_wsl() {
+    [ -f /proc/version ] && grep -qi "microsoft" /proc/version 2>/dev/null
+}
+
+get_arch() {
+    local arch=""
+    arch="$(uname -m)"
+
+    case "$arch" in
+        x86_64|amd64)  printf "amd64" ;;
+        aarch64|arm64) printf "arm64" ;;
+        armv7l)        printf "armhf" ;;
+        *)             printf "%s" "$arch" ;;
+    esac
+}
+
+get_brew_prefix() {
+    if [ "$(get_os)" = "macos" ]; then
+        if [ "$(get_arch)" = "arm64" ]; then
+            printf "/opt/homebrew"
+        else
+            printf "/usr/local"
+        fi
+    else
+        printf "/home/linuxbrew/.linuxbrew"
+    fi
+}
+
+# ===========================================================================
+# Package manager helpers
+# ===========================================================================
+
+pkg_install() {
+    local os=""
+    os="$(get_os)"
+
+    case "$os" in
+        macos)
+            if cmd_exists brew; then
+                brew install "$@"
+            else
+                print_error "Homebrew not found. Install it first."
+                return 1
+            fi
+            ;;
+        debian)
+            sudo apt-get install -y "$@" > /dev/null
+            ;;
+        fedora)
+            sudo dnf install -y "$@" > /dev/null
+            ;;
+        arch)
+            sudo pacman -S --noconfirm "$@" > /dev/null
+            ;;
+        suse)
+            sudo zypper install -y "$@" > /dev/null
+            ;;
+        *)
+            print_error "Unsupported OS for automatic package install: $os"
+            return 1
+            ;;
+    esac
+}
+
+pkg_update() {
+    local os=""
+    os="$(get_os)"
+
+    case "$os" in
+        macos)
+            if cmd_exists brew; then
+                brew update > /dev/null
+            fi
+            ;;
+        debian)
+            sudo apt-get update > /dev/null
+            ;;
+        fedora)
+            sudo dnf check-update > /dev/null 2>&1 || true
+            ;;
+        arch)
+            sudo pacman -Sy > /dev/null
+            ;;
+        suse)
+            sudo zypper refresh > /dev/null
+            ;;
+    esac
+}
+
+# ===========================================================================
+# Portable sed -i (works on both GNU and BSD/macOS)
+# ===========================================================================
+
+sed_i() {
+    if sed --version 2>/dev/null | grep -q "GNU"; then
+        sed -i "$@"
+    else
+        sed -i '' "$@"
+    fi
+}
+
+# ===========================================================================
+# User interaction
+# ===========================================================================
+
 answer_is_yes() {
     [[ "$REPLY" =~ ^[Yy]$ ]] \
         && return 0 \
@@ -18,14 +191,7 @@ ask_for_confirmation() {
 }
 
 ask_for_sudo() {
-    # Ask for the administrator password upfront.
-
     sudo -v &> /dev/null
-
-    # Update existing `sudo` time stamp
-    # until this script has finished.
-    #
-    # https://gist.github.com/cowboy/3118588
 
     while true; do
         sudo -n true
@@ -33,6 +199,10 @@ ask_for_sudo() {
         kill -0 "$$" || exit
     done &> /dev/null &
 }
+
+# ===========================================================================
+# Command helpers
+# ===========================================================================
 
 cmd_exists() {
     command -v "$1" &> /dev/null
@@ -55,16 +225,7 @@ execute() {
     local exitCode=0
     local cmdsPID=""
 
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # If the current process is ended,
-    # also end all its subprocesses.
-
     set_trap "EXIT" "kill_all_subprocesses"
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # Execute commands in background
 
     eval "$CMDS" \
         &> /dev/null \
@@ -72,24 +233,10 @@ execute() {
 
     cmdsPID=$!
 
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # Show a spinner if the commands
-    # require more time to complete.
-
     show_spinner "$cmdsPID" "$CMDS" "$MSG"
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # Wait for the commands to no longer be executing
-    # in the background, and then get their exit code.
 
     wait "$cmdsPID" &> /dev/null
     exitCode=$?
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # Print output based on what happened.
 
     print_result $exitCode "$MSG"
 
@@ -99,49 +246,11 @@ execute() {
 
     rm -rf "$TMP_FILE"
 
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
     return $exitCode
 }
 
 get_answer() {
     printf "%s" "$REPLY"
-}
-
-get_os() {
-    local os=""
-    local kernelName=""
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    kernelName="$(uname -s)"
-
-    if [ "$kernelName" == "Darwin" ]; then
-        os="macos"
-    elif [ "$kernelName" == "Linux" ] && [ -e "/etc/lsb-release" ]; then
-        os="ubuntu"
-    else
-        os="$kernelName"
-    fi
-
-    printf "%s" "$os"
-}
-
-get_os_version() {
-    local os=""
-    local version=""
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    os="$(get_os)"
-
-    if [ "$os" == "macos" ]; then
-        version="$(sw_vers -productVersion)"
-    elif [ "$os" == "ubuntu" ]; then
-        version="$(lsb_release -d | cut -f2 | cut -d' ' -f2)"
-    fi
-
-    printf "%s" "$version"
 }
 
 is_git_repository() {
@@ -153,15 +262,11 @@ is_supported_version() {
     declare -a v2=(${2//./ })
     local i=""
 
-    # Fill empty positions in v1 with zeros.
     for (( i=${#v1[@]}; i<${#v2[@]}; i++ )); do
         v1[i]=0
     done
 
-
     for (( i=0; i<${#v1[@]}; i++ )); do
-
-        # Fill empty positions in v2 with zeros.
         if [[ -z ${v2[i]} ]]; then
             v2[i]=0
         fi
@@ -171,7 +276,6 @@ is_supported_version() {
         elif (( 10#${v1[i]} > 10#${v2[i]} )); then
             return 0
         fi
-
     done
 }
 
@@ -184,10 +288,14 @@ mkd() {
                 print_success "$1"
             fi
         else
-            execute "mkdir -p $1" "$1"
+            execute "mkdir -p '$1'" "$1"
         fi
     fi
 }
+
+# ===========================================================================
+# Printing helpers
+# ===========================================================================
 
 print_error() {
     print_in_red "   [✖] $1 $2\n"
@@ -244,9 +352,13 @@ print_warning() {
     print_in_yellow "   [!] $1\n"
 }
 
+# ===========================================================================
+# Misc helpers
+# ===========================================================================
+
 set_trap() {
     trap -p "$1" | grep "$2" &> /dev/null \
-        || trap '$2' "$1"
+        || trap "$2" "$1"
 }
 
 skip_questions() {
@@ -274,42 +386,18 @@ show_spinner() {
     local i=0
     local frameText=""
 
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # Note: In order for the Travis CI site to display
-    # things correctly, it needs special treatment, hence,
-    # the "is Travis CI?" checks.
-
-    if [ "$TRAVIS" != "true" ]; then
-
-        # Provide more space so that the text hopefully
-        # doesn't reach the bottom line of the terminal window.
-        #
-        # This is a workaround for escape sequences not tracking
-        # the buffer position (accounting for scrolling).
-        #
-        # See also: https://unix.stackexchange.com/a/278888
-
+    if [ "${CI:-}" != "true" ]; then
         printf "\n\n\n"
         tput cuu 3
 
         tput sc
-
     fi
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # Display spinner while the commands are being executed.
 
     while kill -0 "$PID" &>/dev/null; do
 
         frameText="   [${FRAMES:i++%NUMBER_OR_FRAMES:1}] $MSG"
 
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-        # Print frame text.
-
-        if [ "$TRAVIS" != "true" ]; then
+        if [ "${CI:-}" != "true" ]; then
             printf "%s\n" "$frameText"
         else
             printf "%s" "$frameText"
@@ -317,11 +405,7 @@ show_spinner() {
 
         sleep 0.2
 
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-        # Clear frame text.
-
-        if [ "$TRAVIS" != "true" ]; then
+        if [ "${CI:-}" != "true" ]; then
             tput rc
         else
             printf "\r"
