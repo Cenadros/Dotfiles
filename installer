@@ -15,7 +15,7 @@ install_prerequisites() {
     local kernelName
     kernelName="$(uname -s)"
 
-    if [ "$kernelName" == "Darwin" ]; then
+    if [ "$kernelName" = "Darwin" ]; then
         # macOS — use Xcode Command Line Tools (provides git & curl)
         if ! xcode-select -p &>/dev/null; then
             echo "👉  Installing Xcode Command Line Tools..."
@@ -40,7 +40,7 @@ install_prerequisites() {
         echo "👉  Installing git, zsh and curl"
         brew install git zsh curl 2>/dev/null || true
 
-    elif [ "$kernelName" == "Linux" ]; then
+    elif [ "$kernelName" = "Linux" ]; then
         echo "👉  Installing git, zsh and curl"
 
         if [ -f /etc/os-release ]; then
@@ -85,6 +85,11 @@ install_prerequisites
 # ---------------------------------------------------------------------------
 
 echo "👉  Cloning into: '$DOTFILES_PATH'"
-git clone --depth 1 https://github.com/Cenadros/Dotfiles.git "$DOTFILES_PATH" 2> /dev/null || git -C "$DOTFILES_PATH" pull
+if [ -d "$DOTFILES_PATH/.git" ]; then
+    git -C "$DOTFILES_PATH" fetch origin
+    git -C "$DOTFILES_PATH" reset --hard origin/main
+else
+    git clone https://github.com/Cenadros/Dotfiles.git "$DOTFILES_PATH"
+fi
 
 bash "$DOTFILES_PATH/scripts/install"

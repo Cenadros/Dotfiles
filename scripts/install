@@ -23,13 +23,33 @@ if is_wsl; then
 fi
 
 # ===========================================================================
+# Homebrew (install early — needed by later steps on macOS)
+# ===========================================================================
+
+if ! cmd_exists brew; then
+    echo "👉  Installing Homebrew"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+# Make brew available in the current session
+BREW_PREFIX="$(get_brew_prefix)"
+if [ -f "${BREW_PREFIX}/bin/brew" ]; then
+    eval "$(${BREW_PREFIX}/bin/brew shellenv)"
+fi
+
+# ===========================================================================
 # Default shell → zsh
 # ===========================================================================
 
 echo "👉  Changing default terminal to zsh"
-if [ "$SHELL" != "$(which zsh)" ]; then
-    chsh -s "$(which zsh)" > /dev/null 2>&1 || {
-        print_warning "Could not change shell automatically. Run: chsh -s \$(which zsh)"
+ZSH_PATH="$(command -v zsh)"
+if [ -n "$ZSH_PATH" ] && [ "$SHELL" != "$ZSH_PATH" ]; then
+    # Ensure zsh is listed in /etc/shells (required by chsh)
+    if ! grep -qx "$ZSH_PATH" /etc/shells 2>/dev/null; then
+        echo "$ZSH_PATH" | sudo tee -a /etc/shells > /dev/null 2>&1 || true
+    fi
+    chsh -s "$ZSH_PATH" < /dev/null > /dev/null 2>&1 || {
+        print_warning "Could not change shell automatically. Run: chsh -s $ZSH_PATH"
     }
 fi
 
@@ -187,21 +207,6 @@ pushd "${HOME}/.nvm" > /dev/null
     git fetch --tags origin
     git checkout "$(git describe --abbrev=0 --tags --match "v[0-9]*" "$(git rev-list --tags --max-count=1)")"
 popd > /dev/null
-
-# ===========================================================================
-# Homebrew
-# ===========================================================================
-
-if ! cmd_exists brew; then
-    echo "👉  Installing Homebrew"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-fi
-
-# Make brew available in the current session
-BREW_PREFIX="$(get_brew_prefix)"
-if [ -f "${BREW_PREFIX}/bin/brew" ]; then
-    eval "$(${BREW_PREFIX}/bin/brew shellenv)"
-fi
 
 # ===========================================================================
 # Build tools

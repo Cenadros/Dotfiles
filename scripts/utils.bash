@@ -10,9 +10,9 @@ get_os() {
 
     kernelName="$(uname -s)"
 
-    if [ "$kernelName" == "Darwin" ]; then
+    if [ "$kernelName" = "Darwin" ]; then
         os="macos"
-    elif [ "$kernelName" == "Linux" ]; then
+    elif [ "$kernelName" = "Linux" ]; then
         if [ -f /etc/os-release ]; then
             . /etc/os-release
             case "$ID" in
@@ -47,7 +47,7 @@ get_os_version() {
 
     os="$(get_os)"
 
-    if [ "$os" == "macos" ]; then
+    if [ "$os" = "macos" ]; then
         version="$(sw_vers -productVersion)"
     elif [ -f /etc/os-release ]; then
         . /etc/os-release
@@ -61,7 +61,7 @@ get_os_name() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         printf "%s" "$PRETTY_NAME"
-    elif [ "$(get_os)" == "macos" ]; then
+    elif [ "$(get_os)" = "macos" ]; then
         printf "macOS %s" "$(sw_vers -productVersion)"
     else
         printf "%s" "$(uname -s)"
@@ -85,8 +85,8 @@ get_arch() {
 }
 
 get_brew_prefix() {
-    if [ "$(get_os)" == "macos" ]; then
-        if [ "$(get_arch)" == "arm64" ]; then
+    if [ "$(get_os)" = "macos" ]; then
+        if [ "$(get_arch)" = "arm64" ]; then
             printf "/opt/homebrew"
         else
             printf "/usr/local"
@@ -358,7 +358,7 @@ print_warning() {
 
 set_trap() {
     trap -p "$1" | grep "$2" &> /dev/null \
-        || trap '$2' "$1"
+        || trap "$2" "$1"
 }
 
 skip_questions() {
