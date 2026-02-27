@@ -166,22 +166,27 @@ install_docker_macos() {
 }
 
 echo "👉  Installing container runtime"
-case "$OS" in
-    debian|fedora|arch|suse|linux)
-        install_docker_linux
-        ;;
-    macos)
-        install_docker_macos
-        ;;
-    *)
-        print_warning "Please install Docker manually: https://docs.docker.com/desktop/"
-        echo -n "    Would you like to proceed with the next steps? (y/n) "
-        read -r reply
-        if [ "$reply" = n ] || [ "$reply" = N ]; then
-            exit
-        fi
-        ;;
-esac
+if is_wsl && cmd_exists winget.exe; then
+    echo "    Installing Docker Desktop via winget..."
+    winget.exe install -e --id Docker.DockerDesktop --accept-source-agreements --accept-package-agreements || true
+else
+    case "$OS" in
+        debian|fedora|arch|suse|linux)
+            install_docker_linux
+            ;;
+        macos)
+            install_docker_macos
+            ;;
+        *)
+            print_warning "Please install Docker manually: https://docs.docker.com/desktop/"
+            echo -n "    Would you like to proceed with the next steps? (y/n) "
+            read -r reply
+            if [ "$reply" = n ] || [ "$reply" = N ]; then
+                exit
+            fi
+            ;;
+    esac
+fi
 
 # ===========================================================================
 # Prezto (zsh framework)
@@ -247,6 +252,354 @@ fi
 if cmd_exists mkcert; then
     echo "👉  Generating mkcert certificates"
     mkcert -install 2>/dev/null || true
+fi
+
+# ===========================================================================
+# AI coding tools
+# ===========================================================================
+
+echo "👉  Installing AI coding tools"
+
+# Claude Desktop
+if is_wsl && cmd_exists winget.exe; then
+    echo "    Installing Claude Desktop via winget..."
+    winget.exe install -e --id Anthropic.Claude --accept-source-agreements --accept-package-agreements || true
+elif [ "$OS" = "macos" ]; then
+    if [ ! -d "/Applications/Claude.app" ]; then
+        echo "    Installing Claude Desktop..."
+        brew install --cask claude
+    else
+        echo "    Claude Desktop already installed."
+    fi
+else
+    print_warning "Claude Desktop is only available on macOS/Windows. Download manually if a Linux build becomes available."
+fi
+
+# Claude CLI (Claude Code)
+if ! cmd_exists claude; then
+    echo "    Installing Claude CLI..."
+    if [ "$OS" = "macos" ]; then
+        brew install --cask claude-code
+    else
+        curl -fsSL https://claude.ai/install.sh | bash
+    fi
+else
+    echo "    Claude CLI already installed."
+fi
+
+# Codex Desktop
+if [ "$OS" = "macos" ]; then
+    if [ ! -d "/Applications/Codex.app" ]; then
+        echo "    Installing Codex Desktop..."
+        if [ "$(get_arch)" = "arm64" ]; then
+            brew install --cask codex-app
+        else
+            curl -fsSL -o /tmp/Codex.dmg "https://persistent.oaistatic.com/codex-app-prod/Codex.dmg"
+            hdiutil attach /tmp/Codex.dmg -nobrowse -quiet
+            cp -R "/Volumes/Codex Installer/Codex.app" /Applications/
+            hdiutil detach "/Volumes/Codex Installer" -quiet
+            rm -f /tmp/Codex.dmg
+        fi
+    else
+        echo "    Codex Desktop already installed."
+    fi
+else
+    print_warning "Codex Desktop is only available on macOS."
+fi
+
+# Codex CLI
+if ! cmd_exists codex; then
+    echo "    Installing Codex CLI..."
+    if [ "$OS" = "macos" ]; then
+        brew install --cask codex
+    elif cmd_exists npm; then
+        npm install -g @openai/codex
+    else
+        print_warning "npm not found. Install Node.js first, then run: npm install -g @openai/codex"
+    fi
+else
+    echo "    Codex CLI already installed."
+fi
+
+# OpenCode CLI
+if ! cmd_exists opencode; then
+    echo "    Installing OpenCode CLI..."
+    if cmd_exists brew; then
+        brew install opencode
+    else
+        curl -fsSL https://opencode.ai/install | bash
+    fi
+else
+    echo "    OpenCode CLI already installed."
+fi
+
+# OpenCode Desktop
+if [ "$OS" = "macos" ]; then
+    if [ ! -d "/Applications/OpenCode Desktop.app" ]; then
+        echo "    Installing OpenCode Desktop..."
+        brew install --cask opencode-desktop
+    else
+        echo "    OpenCode Desktop already installed."
+    fi
+else
+    print_warning "Install OpenCode Desktop manually from https://opencode.ai/download"
+fi
+
+# ===========================================================================
+# AI tools — plugins & skills
+# ===========================================================================
+
+echo "👉  Installing AI tool plugins and skills"
+
+# GSD (Get Stuff Done) — spec-driven development & context engineering
+if cmd_exists npx; then
+    echo "    Installing GSD..."
+    npx -y get-shit-done-cc@latest --all --global 2>/dev/null || true
+else
+    print_warning "npx not found. Skipping GSD. Install Node.js, then run: npx get-shit-done-cc@latest --all --global"
+fi
+
+# Claude Code — MCP servers & plugins
+if cmd_exists claude; then
+    echo "    Adding Claude Code MCP servers..."
+    claude mcp add context7 --scope user -- npx -y @upstash/context7-mcp@latest 2>/dev/null || true
+    claude mcp add sequential-thinking --scope user -- npx -y @modelcontextprotocol/server-sequential-thinking 2>/dev/null || true
+    claude mcp add playwright --scope user -- npx -y @playwright/mcp@latest 2>/dev/null || true
+
+    echo "    Setting up Claude Code plugin marketplaces..."
+    if claude plugin marketplace add anthropics/claude-code 2>/dev/null; then
+        claude plugin marketplace add obra/superpowers-marketplace 2>/dev/null || true
+        claude plugin marketplace add ComposioHQ/awesome-claude-plugins 2>/dev/null || true
+        claude plugin marketplace add trailofbits/skills 2>/dev/null || true
+
+        echo "    Installing Claude Code plugins..."
+        claude plugin install commit-commands@claude-code-plugins 2>/dev/null || true
+        claude plugin install code-review@claude-code-plugins 2>/dev/null || true
+        claude plugin install frontend-design@claude-code-plugins 2>/dev/null || true
+        claude plugin install feature-dev@claude-code-plugins 2>/dev/null || true
+        claude plugin install superpowers@superpowers-marketplace 2>/dev/null || true
+    else
+        print_warning "Claude Code plugin CLI not available. Run inside Claude Code:"
+        echo "      /plugin marketplace add anthropics/claude-code"
+        echo "      /plugin marketplace add obra/superpowers-marketplace"
+        echo "      /plugin marketplace add ComposioHQ/awesome-claude-plugins"
+        echo "      /plugin marketplace add trailofbits/skills"
+        echo "      /plugin install commit-commands@claude-code-plugins"
+        echo "      /plugin install code-review@claude-code-plugins"
+        echo "      /plugin install frontend-design@claude-code-plugins"
+        echo "      /plugin install feature-dev@claude-code-plugins"
+        echo "      /plugin install superpowers@superpowers-marketplace"
+    fi
+
+    # Ensure plugins are enabled directly in settings.json (fallback for
+    # when the CLI plugin commands are not yet available)
+    CLAUDE_SETTINGS="${HOME}/.claude/settings.json"
+    mkdir -p "${HOME}/.claude"
+    if cmd_exists jq; then
+        if [ -f "$CLAUDE_SETTINGS" ]; then
+            tmp="$(mktemp)"
+            jq '.enabledPlugins = ((.enabledPlugins // {}) + {
+                "commit-commands@claude-code-plugins": true,
+                "code-review@claude-code-plugins": true,
+                "frontend-design@claude-code-plugins": true,
+                "feature-dev@claude-code-plugins": true,
+                "superpowers@superpowers-marketplace": true
+            })' "$CLAUDE_SETTINGS" > "$tmp" && mv "$tmp" "$CLAUDE_SETTINGS"
+        else
+            cat > "$CLAUDE_SETTINGS" <<'CLEOF'
+{
+  "enabledPlugins": {
+    "commit-commands@claude-code-plugins": true,
+    "code-review@claude-code-plugins": true,
+    "frontend-design@claude-code-plugins": true,
+    "feature-dev@claude-code-plugins": true,
+    "superpowers@superpowers-marketplace": true
+  }
+}
+CLEOF
+        fi
+        echo "    Claude Code plugins enabled in settings.json."
+    else
+        print_warning "jq not found. Add plugins manually to ~/.claude/settings.json"
+    fi
+fi
+
+# OpenCode — plugins & skills
+if cmd_exists opencode; then
+    OPENCODE_GLOBAL="${HOME}/.config/opencode/opencode.json"
+    mkdir -p "$(dirname "$OPENCODE_GLOBAL")"
+    if [ ! -f "$OPENCODE_GLOBAL" ]; then
+        echo "    Creating OpenCode global config with plugins..."
+        cat > "$OPENCODE_GLOBAL" <<'OCEOF'
+{
+  "plugin": ["oh-my-opencode"]
+}
+OCEOF
+    elif ! grep -q "oh-my-opencode" "$OPENCODE_GLOBAL" 2>/dev/null; then
+        echo "    Adding oh-my-opencode to OpenCode config..."
+        if cmd_exists jq; then
+            tmp="$(mktemp)"
+            jq '.plugin = ((.plugin // []) + ["oh-my-opencode"] | unique)' "$OPENCODE_GLOBAL" > "$tmp" && mv "$tmp" "$OPENCODE_GLOBAL"
+        else
+            print_warning "Add to your opencode.json: \"plugin\": [\"oh-my-opencode\"]"
+        fi
+    else
+        echo "    OpenCode oh-my-opencode plugin already configured."
+    fi
+fi
+
+# Superpowers skills — shared between Claude Code and OpenCode
+echo "    Installing Superpowers skills..."
+SUPERPOWERS_TMP="$(mktemp -d)"
+if git clone --depth 1 https://github.com/obra/superpowers.git "$SUPERPOWERS_TMP" 2>/dev/null; then
+    if cmd_exists claude && [ -d "$SUPERPOWERS_TMP/.claude/skills" ]; then
+        mkdir -p "${HOME}/.claude/skills"
+        cp -r "$SUPERPOWERS_TMP/.claude/skills/"* "${HOME}/.claude/skills/" 2>/dev/null || true
+    fi
+    if cmd_exists opencode && [ -d "$SUPERPOWERS_TMP/.opencode/skills" ]; then
+        mkdir -p "${HOME}/.config/opencode/skills"
+        cp -r "$SUPERPOWERS_TMP/.opencode/skills/"* "${HOME}/.config/opencode/skills/" 2>/dev/null || true
+    fi
+    rm -rf "$SUPERPOWERS_TMP"
+else
+    print_warning "Could not clone Superpowers repo. Install manually from https://github.com/obra/superpowers"
+    rm -rf "$SUPERPOWERS_TMP"
+fi
+
+# ===========================================================================
+# Terminal applications
+# ===========================================================================
+
+# Warp
+echo "👉  Installing Warp terminal"
+if ! cmd_exists warp-terminal && [ ! -d "/Applications/Warp.app" ]; then
+    if is_wsl && cmd_exists winget.exe; then
+        echo "    Installing Warp via winget..."
+        winget.exe install -e --id Warp.Warp --accept-source-agreements --accept-package-agreements || true
+    else
+        case "$OS" in
+            macos)
+                brew install --cask warp
+                ;;
+            debian)
+                curl -fsSL https://releases.warp.dev/linux/keys/warp.gpg | \
+                    sudo gpg --dearmor -o /usr/share/keyrings/warp.gpg 2>/dev/null || true
+                echo "deb [signed-by=/usr/share/keyrings/warp.gpg] https://releases.warp.dev/linux/deb stable main" | \
+                    sudo tee /etc/apt/sources.list.d/warp.list > /dev/null
+                pkg_update
+                pkg_install warp-terminal
+                ;;
+            fedora)
+                sudo rpm --import https://releases.warp.dev/linux/keys/warp.gpg 2>/dev/null || true
+                printf '[warp]\nname=Warp Terminal\nbaseurl=https://releases.warp.dev/linux/rpm/stable\nenabled=1\ngpgcheck=1\ngpgkey=https://releases.warp.dev/linux/keys/warp.gpg\n' | \
+                    sudo tee /etc/yum.repos.d/warp.repo > /dev/null
+                pkg_install warp-terminal
+                ;;
+            arch)
+                if cmd_exists yay; then
+                    yay -S --noconfirm warp-terminal-bin
+                else
+                    print_warning "Install Warp from AUR: yay -S warp-terminal-bin"
+                fi
+                ;;
+            *)
+                print_warning "Warp is not available for this OS. Download manually from https://www.warp.dev"
+                ;;
+        esac
+    fi
+else
+    echo "    Warp already installed."
+fi
+
+# Termius
+echo "👉  Installing Termius"
+if [ ! -d "/Applications/Termius.app" ] && ! cmd_exists termius && ! cmd_exists termius-app; then
+    if is_wsl && cmd_exists winget.exe; then
+        echo "    Installing Termius via winget..."
+        winget.exe install -e --id Termius.Termius --accept-source-agreements --accept-package-agreements || true
+    else
+        case "$OS" in
+            macos)
+                brew install --cask termius
+                ;;
+            debian|fedora|arch|suse|linux)
+                if cmd_exists snap; then
+                    sudo snap install termius-app
+                elif cmd_exists flatpak; then
+                    flatpak install -y flathub com.termius.Termius
+                else
+                    print_warning "Install Termius manually from https://termius.com/linux"
+                fi
+                ;;
+            *)
+                print_warning "Termius is not available for this OS. Download manually from https://termius.com"
+                ;;
+        esac
+    fi
+else
+    echo "    Termius already installed."
+fi
+
+# ===========================================================================
+# Code editors
+# ===========================================================================
+
+# Visual Studio Code
+echo "👉  Installing Visual Studio Code"
+if ! cmd_exists code && [ ! -d "/Applications/Visual Studio Code.app" ]; then
+    if is_wsl && cmd_exists winget.exe; then
+        echo "    Installing Visual Studio Code via winget..."
+        winget.exe install -e --id Microsoft.VisualStudioCode --accept-source-agreements --accept-package-agreements || true
+    else
+        case "$OS" in
+            macos)
+                brew install --cask visual-studio-code
+                ;;
+            debian)
+                curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | \
+                    sudo gpg --dearmor -o /usr/share/keyrings/packages.microsoft.gpg 2>/dev/null || true
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | \
+                    sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null
+                pkg_update
+                pkg_install code
+                ;;
+            fedora)
+                sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc 2>/dev/null || true
+                printf '[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc\n' | \
+                    sudo tee /etc/yum.repos.d/vscode.repo > /dev/null
+                pkg_install code
+                ;;
+            arch)
+                if cmd_exists yay; then
+                    yay -S --noconfirm visual-studio-code-bin
+                elif cmd_exists snap; then
+                    sudo snap install code --classic
+                else
+                    print_warning "Install VS Code from AUR: yay -S visual-studio-code-bin"
+                fi
+                ;;
+            suse)
+                sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc 2>/dev/null || true
+                sudo zypper addrepo -g https://packages.microsoft.com/yumrepos/vscode vscode 2>/dev/null || true
+                sudo zypper refresh > /dev/null 2>&1
+                pkg_install code
+                ;;
+            linux)
+                if cmd_exists snap; then
+                    sudo snap install code --classic
+                elif cmd_exists flatpak; then
+                    flatpak install -y flathub com.visualstudio.code
+                else
+                    print_warning "Install VS Code manually from https://code.visualstudio.com"
+                fi
+                ;;
+            *)
+                print_warning "Install VS Code manually from https://code.visualstudio.com"
+                ;;
+        esac
+    fi
+else
+    echo "    Visual Studio Code already installed."
 fi
 
 # ===========================================================================
