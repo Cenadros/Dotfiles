@@ -1,21 +1,35 @@
 #!/bin/bash
 
+cd "$(dirname "${BASH_SOURCE[0]}")" \
+    && . "utils.bash"
+
 echo "🚀 Updating Dotfiles"
 echo "-------------------------------------------------"
 echo
+
 echo "👉  Updating dotfiles repository..."
-pushd ${HOME}/.dotfiles
+pushd "${HOME}/.dotfiles" > /dev/null
 git pull
-popd
+popd > /dev/null
 
 echo "👉  Updating prezto repository..."
-pushd ${HOME}/.zprezto
+pushd "${HOME}/.zprezto" > /dev/null
 git pull && git submodule update --init --recursive
-popd
+popd > /dev/null
 
 echo "👉  Updating nvm repository..."
-pushd ${HOME}/.nvm
-git fetch --tags origin && git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)`
-popd
+pushd "${HOME}/.nvm" > /dev/null
+git fetch --tags origin && git checkout "$(git describe --abbrev=0 --tags --match "v[0-9]*" "$(git rev-list --tags --max-count=1)")"
+popd > /dev/null
+
+echo "👉  Updating Homebrew..."
+BREW_PREFIX="$(get_brew_prefix)"
+if [ -f "${BREW_PREFIX}/bin/brew" ]; then
+    eval "$(${BREW_PREFIX}/bin/brew shellenv)"
+    brew update && brew upgrade
+fi
 
 bash "$HOME/.dotfiles/scripts/symlinks"
+
+echo ""
+echo "✅  Update complete!"

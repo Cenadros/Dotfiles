@@ -1,12 +1,88 @@
 #!/bin/bash
+set -e
+
 export DOTFILES_PATH="$HOME/.dotfiles"
 
 echo "🚀 Welcome to the Dotfiles installer!"
 echo "-------------------------------------------------"
 echo
 
-echo "👉  Installing git, zsh and curl"
-sudo apt-get install git zsh curl -y > /dev/null
+# ---------------------------------------------------------------------------
+# Detect OS and install base dependencies (git, zsh, curl)
+# ---------------------------------------------------------------------------
+
+install_prerequisites() {
+    local kernelName
+    kernelName="$(uname -s)"
+
+    if [ "$kernelName" == "Darwin" ]; then
+        # macOS — use Xcode Command Line Tools (provides git & curl)
+        if ! xcode-select -p &>/dev/null; then
+            echo "👉  Installing Xcode Command Line Tools..."
+            xcode-select --install
+            echo "    Press any key once the installation has finished..."
+            read -r -n 1
+        fi
+
+        # Install Homebrew if not present (needed to install zsh if missing)
+        if ! command -v brew &>/dev/null; then
+            echo "👉  Installing Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+            # Make brew available in the current session
+            if [ -f /opt/homebrew/bin/brew ]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            elif [ -f /usr/local/bin/brew ]; then
+                eval "$(/usr/local/bin/brew shellenv)"
+            fi
+        fi
+
+        echo "👉  Installing git, zsh and curl"
+        brew install git zsh curl 2>/dev/null || true
+
+    elif [ "$kernelName" == "Linux" ]; then
+        echo "👉  Installing git, zsh and curl"
+
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            case "$ID" in
+                ubuntu|debian|linuxmint|pop|elementary)
+                    sudo apt-get update -y > /dev/null
+                    sudo apt-get install -y git zsh curl > /dev/null
+                    ;;
+                fedora|rhel|centos|rocky|alma)
+                    sudo dnf install -y git zsh curl > /dev/null
+                    ;;
+                arch|manjaro|endeavouros)
+                    sudo pacman -Sy --noconfirm git zsh curl > /dev/null
+                    ;;
+                opensuse*|sles)
+                    sudo zypper install -y git zsh curl > /dev/null
+                    ;;
+                *)
+                    echo "⚠️  Unknown Linux distro ($ID). Trying apt-get..."
+                    sudo apt-get update -y > /dev/null 2>&1 && \
+                        sudo apt-get install -y git zsh curl > /dev/null 2>&1 || \
+                        { echo "❌  Could not install prerequisites. Install git, zsh and curl manually."; exit 1; }
+                    ;;
+            esac
+        else
+            echo "⚠️  Cannot detect Linux distro. Trying apt-get..."
+            sudo apt-get update -y > /dev/null 2>&1 && \
+                sudo apt-get install -y git zsh curl > /dev/null 2>&1 || \
+                { echo "❌  Could not install prerequisites. Install git, zsh and curl manually."; exit 1; }
+        fi
+    else
+        echo "❌  Unsupported operating system: $kernelName"
+        exit 1
+    fi
+}
+
+install_prerequisites
+
+# ---------------------------------------------------------------------------
+# Clone or update dotfiles
+# ---------------------------------------------------------------------------
 
 echo "👉  Cloning into: '$DOTFILES_PATH'"
 git clone --depth 1 https://github.com/Cenadros/Dotfiles.git "$DOTFILES_PATH" 2> /dev/null || git -C "$DOTFILES_PATH" pull
