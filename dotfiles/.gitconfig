@@ -1,5 +1,15 @@
 [core]
     excludesfile = ~/.gitignore
 [user]
-	email = test@test.com
-	name = test
+    email = test@test.com
+    name = test
+[init]
+    defaultBranch = main
+[pull]
+    rebase = true
+[push]
+    autoSetupRemote = true
+[rerere]
+    enabled = true
+[diff]
+    algorithm = histogram

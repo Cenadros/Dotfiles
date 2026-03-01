@@ -1,5 +1,15 @@
+# macOS
 .DS_Store
-.phpunit.result.cache
+
+# Editors
 .idea
-*VBox*.log
 .vscode
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Windows
+Thumbs.db
