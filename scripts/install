@@ -166,7 +166,9 @@ install_docker_macos() {
 }
 
 echo "👉  Installing container runtime"
-if is_wsl && cmd_exists winget.exe; then
+if cmd_exists docker || [ -d "/Applications/OrbStack.app" ] || [ -d "/Applications/Docker.app" ]; then
+    echo "    Container runtime already installed."
+elif is_wsl && cmd_exists winget.exe; then
     echo "    Installing Docker Desktop via winget..."
     winget.exe install -e --id Docker.DockerDesktop --accept-source-agreements --accept-package-agreements || true
 else
@@ -485,6 +487,19 @@ if [ "$OS" = "macos" ]; then
 fi
 
 # ===========================================================================
+# AltTab (macOS window switcher)
+# ===========================================================================
+
+if [ "$OS" = "macos" ]; then
+    echo "👉  Installing AltTab"
+    if [ ! -d "/Applications/AltTab.app" ]; then
+        brew install --cask alt-tab
+    else
+        echo "    AltTab already installed."
+    fi
+fi
+
+# ===========================================================================
 # Terminal applications
 # ===========================================================================
 
@@ -629,10 +644,10 @@ read -r -p "    Type in your email for gitconfig: " git_email
 read -r -p "    Type in your name for gitconfig: " git_name
 
 if [ -n "$git_email" ]; then
-    sed_i "s/test@test.com/$git_email/g" "${DOTFILES_PATH}/dotfiles/.gitconfig"
+    git config -f "${DOTFILES_PATH}/dotfiles/.gitconfig" user.email "$git_email"
 fi
 if [ -n "$git_name" ]; then
-    sed_i "s/name = test$/name = $git_name/g" "${DOTFILES_PATH}/dotfiles/.gitconfig"
+    git config -f "${DOTFILES_PATH}/dotfiles/.gitconfig" user.name "$git_name"
 fi
 
 # ===========================================================================
