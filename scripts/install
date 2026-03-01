@@ -500,6 +500,19 @@ if [ "$OS" = "macos" ]; then
 fi
 
 # ===========================================================================
+# Raycast (macOS launcher & productivity tool)
+# ===========================================================================
+
+if [ "$OS" = "macos" ]; then
+    echo "👉  Installing Raycast"
+    if [ ! -d "/Applications/Raycast.app" ]; then
+        brew install --cask raycast
+    else
+        echo "    Raycast already installed."
+    fi
+fi
+
+# ===========================================================================
 # Terminal applications
 # ===========================================================================
 
