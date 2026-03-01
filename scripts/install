@@ -467,6 +467,24 @@ else
 fi
 
 # ===========================================================================
+# Karabiner-Elements (macOS keyboard customizer)
+# ===========================================================================
+
+if [ "$OS" = "macos" ]; then
+    echo "👉  Installing Karabiner-Elements"
+    if [ ! -d "/Applications/Karabiner-Elements.app" ]; then
+        brew install --cask karabiner-elements
+    else
+        echo "    Karabiner-Elements already installed."
+    fi
+
+    echo "👉  Applying Karabiner-Elements configuration"
+    mkdir -p "$HOME/.config/karabiner"
+    ln -fs "$DOTFILES_PATH/config/karabiner/karabiner.json" "$HOME/.config/karabiner/karabiner.json"
+    echo "    Karabiner config linked."
+fi
+
+# ===========================================================================
 # Terminal applications
 # ===========================================================================
 
