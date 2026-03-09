@@ -30,9 +30,8 @@ if [ -d "${HOME}/.nvm" ]; then
 fi
 
 echo "👉  Updating Homebrew..."
-BREW_PREFIX="$(get_brew_prefix)"
-if [ -f "${BREW_PREFIX}/bin/brew" ]; then
-    eval "$(${BREW_PREFIX}/bin/brew shellenv)"
+init_brew
+if cmd_exists brew; then
     brew update && brew upgrade
 fi
 
