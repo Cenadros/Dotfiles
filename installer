@@ -11,6 +11,9 @@ echo
 # Detect OS and install base dependencies (git, zsh, curl)
 # ---------------------------------------------------------------------------
 
+# NOTE: OS detection below is intentionally duplicated because this script
+# runs before the repo is cloned, so scripts/utils.bash (get_os, pkg_install,
+# etc.) is not available yet. See scripts/utils.bash for the canonical version.
 install_prerequisites() {
     local kernelName
     kernelName="$(uname -s)"

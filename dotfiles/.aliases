@@ -20,7 +20,7 @@ alias t='git for-each-ref --format="%(color:green)%(refname:short) %(color:red)%
 
 # DOCKER
 alias dup='ddown && make'
-alias ddown='containers=$(docker ps -a -q 2>/dev/null); if [ -n "$containers" ]; then echo "stopping docker containers..." && docker stop $containers > /dev/null && echo "docker containers stopped."; else echo "no docker containers running."; fi'
+alias ddown='containers=$(docker ps -a -q 2>/dev/null); if [ -n "$containers" ]; then echo "stopping docker containers..." && docker stop "$containers" > /dev/null && echo "docker containers stopped."; else echo "no docker containers running."; fi'
 
 # DOTFILES
 alias dot_update='bash ~/.dotfiles/scripts/update'

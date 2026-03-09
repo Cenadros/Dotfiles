@@ -373,6 +373,60 @@ skip_questions() {
     return 1
 }
 
+# ===========================================================================
+# Application install helpers
+# ===========================================================================
+
+install_brew_cask() {
+    local app_name="$1"
+    local cask_name="$2"
+    local app_path="${3:-/Applications/${app_name}.app}"
+
+    if [ ! -d "$app_path" ]; then
+        echo "    Installing ${app_name}..."
+        brew install --cask "$cask_name"
+    else
+        echo "    ${app_name} already installed."
+    fi
+}
+
+install_mas_app() {
+    local app_name="$1"
+    local mas_id="$2"
+    local app_path="${3:-/Applications/${app_name}.app}"
+
+    if [ ! -d "$app_path" ]; then
+        if mas_signed_in; then
+            mas install "$mas_id"
+        else
+            print_warning "Skipping ${app_name} — not signed into the Mac App Store."
+        fi
+    else
+        echo "    ${app_name} already installed."
+    fi
+}
+
+git_clone_or_pull() {
+    local repo_url="$1"
+    local target_dir="$2"
+    local extra_flags="${3:-}"
+
+    if [ -d "$target_dir/.git" ]; then
+        git -C "$target_dir" pull
+    else
+        # shellcheck disable=SC2086
+        git clone $extra_flags "$repo_url" "$target_dir"
+    fi
+}
+
+init_brew() {
+    local prefix
+    prefix="$(get_brew_prefix)"
+    if [ -f "${prefix}/bin/brew" ]; then
+        eval "$(${prefix}/bin/brew shellenv)"
+    fi
+}
+
 show_spinner() {
     local -r FRAMES='/-\|'
 

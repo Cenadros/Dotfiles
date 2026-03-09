@@ -6,6 +6,14 @@ export DOTFILES_PATH="$HOME/.dotfiles"
 cd "$(dirname "${BASH_SOURCE[0]}")" \
     && . "utils.bash"
 
+# ===========================================================================
+# Constants
+# ===========================================================================
+
+readonly HOMEBREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+readonly MAS_MAGNET="441258766"
+readonly MAS_CAFFEINATED="1362171212"
+
 OS="$(get_os)"
 
 echo ""
@@ -28,14 +36,11 @@ fi
 
 if ! cmd_exists brew; then
     echo "👉  Installing Homebrew"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    /bin/bash -c "$(curl -fsSL "$HOMEBREW_INSTALL_URL")"
 fi
 
 # Make brew available in the current session
-BREW_PREFIX="$(get_brew_prefix)"
-if [ -f "${BREW_PREFIX}/bin/brew" ]; then
-    eval "$(${BREW_PREFIX}/bin/brew shellenv)"
-fi
+init_brew
 
 # ===========================================================================
 # mas — Mac App Store CLI (needed to install purchased apps)
@@ -213,19 +218,17 @@ fi
 # ===========================================================================
 
 echo "👉  Cloning prezto into: ${HOME}/.zprezto"
-git clone --recursive https://github.com/sorin-ionescu/prezto.git "${HOME}/.zprezto" 2> /dev/null || \
-    git -C "${HOME}/.zprezto" pull
+git_clone_or_pull "https://github.com/sorin-ionescu/prezto.git" "${HOME}/.zprezto" "--recursive"
 
 echo "👉  Cloning prezto-contrib into: ${HOME}/.zprezto/contrib"
-git clone --recurse-submodules https://github.com/belak/prezto-contrib "${HOME}/.zprezto/contrib" 2> /dev/null || \
-    git -C "${HOME}/.zprezto/contrib" pull
+git_clone_or_pull "https://github.com/belak/prezto-contrib" "${HOME}/.zprezto/contrib" "--recurse-submodules"
 
 # ===========================================================================
 # NVM (Node Version Manager)
 # ===========================================================================
 
 echo "👉  Cloning nvm into: ${HOME}/.nvm"
-git clone https://github.com/nvm-sh/nvm.git "${HOME}/.nvm" 2> /dev/null || true
+git_clone_or_pull "https://github.com/nvm-sh/nvm.git" "${HOME}/.nvm"
 
 echo "👉  Checking nvm latest version"
 pushd "${HOME}/.nvm" > /dev/null
@@ -355,12 +358,7 @@ fi
 
 # OpenCode Desktop
 if [ "$OS" = "macos" ]; then
-    if [ ! -d "/Applications/OpenCode Desktop.app" ]; then
-        echo "    Installing OpenCode Desktop..."
-        brew install --cask opencode-desktop
-    else
-        echo "    OpenCode Desktop already installed."
-    fi
+    install_brew_cask "OpenCode Desktop" "opencode-desktop"
 else
     print_warning "Install OpenCode Desktop manually from https://opencode.ai/download"
 fi
@@ -492,11 +490,7 @@ fi
 
 if [ "$OS" = "macos" ]; then
     echo "👉  Installing Karabiner-Elements"
-    if [ ! -d "/Applications/Karabiner-Elements.app" ]; then
-        brew install --cask karabiner-elements
-    else
-        echo "    Karabiner-Elements already installed."
-    fi
+    install_brew_cask "Karabiner-Elements" "karabiner-elements"
 
     echo "👉  Applying Karabiner-Elements configuration"
     mkdir -p "$HOME/.config/karabiner"
@@ -510,11 +504,7 @@ fi
 
 if [ "$OS" = "macos" ]; then
     echo "👉  Installing AltTab"
-    if [ ! -d "/Applications/AltTab.app" ]; then
-        brew install --cask alt-tab
-    else
-        echo "    AltTab already installed."
-    fi
+    install_brew_cask "AltTab" "alt-tab"
 fi
 
 # ===========================================================================
@@ -523,11 +513,7 @@ fi
 
 if [ "$OS" = "macos" ]; then
     echo "👉  Installing Raycast"
-    if [ ! -d "/Applications/Raycast.app" ]; then
-        brew install --cask raycast
-    else
-        echo "    Raycast already installed."
-    fi
+    install_brew_cask "Raycast" "raycast"
 fi
 
 # ===========================================================================
@@ -536,15 +522,7 @@ fi
 
 if [ "$OS" = "macos" ]; then
     echo "👉  Installing Magnet"
-    if [ ! -d "/Applications/Magnet.app" ]; then
-        if mas_signed_in; then
-            mas install 441258766
-        else
-            echo "    ⚠️  Skipping Magnet — not signed into the Mac App Store."
-        fi
-    else
-        echo "    Magnet already installed."
-    fi
+    install_mas_app "Magnet" "$MAS_MAGNET"
 fi
 
 # ===========================================================================
@@ -553,15 +531,7 @@ fi
 
 if [ "$OS" = "macos" ]; then
     echo "👉  Installing Caffeinated"
-    if [ ! -d "/Applications/Caffeinated.app" ]; then
-        if mas_signed_in; then
-            mas install 1362171212
-        else
-            echo "    ⚠️  Skipping Caffeinated — not signed into the Mac App Store."
-        fi
-    else
-        echo "    Caffeinated already installed."
-    fi
+    install_mas_app "Caffeinated" "$MAS_CAFFEINATED"
 fi
 
 # ===========================================================================
@@ -570,11 +540,7 @@ fi
 
 if [ "$OS" = "macos" ]; then
     echo "👉  Installing NotchNook"
-    if [ ! -d "/Applications/NotchNook.app" ]; then
-        brew install --cask notchnook
-    else
-        echo "    NotchNook already installed."
-    fi
+    install_brew_cask "NotchNook" "notchnook"
 fi
 
 # ===========================================================================
@@ -583,11 +549,7 @@ fi
 
 if [ "$OS" = "macos" ]; then
     echo "👉  Installing Superset"
-    if [ ! -d "/Applications/Superset.app" ]; then
-        brew install --cask superset
-    else
-        echo "    Superset already installed."
-    fi
+    install_brew_cask "Superset" "superset"
 fi
 
 # ===========================================================================
