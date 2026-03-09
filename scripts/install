@@ -38,6 +38,24 @@ if [ -f "${BREW_PREFIX}/bin/brew" ]; then
 fi
 
 # ===========================================================================
+# mas — Mac App Store CLI (needed to install purchased apps)
+# ===========================================================================
+
+if [ "$OS" = "macos" ]; then
+    echo "👉  Installing mas (Mac App Store CLI)"
+    if ! cmd_exists mas; then
+        brew install mas
+    else
+        echo "    mas already installed."
+    fi
+fi
+
+# Helper: check if signed into the Mac App Store
+mas_signed_in() {
+    mas account &>/dev/null
+}
+
+# ===========================================================================
 # Default shell → zsh
 # ===========================================================================
 
@@ -509,6 +527,66 @@ if [ "$OS" = "macos" ]; then
         brew install --cask raycast
     else
         echo "    Raycast already installed."
+    fi
+fi
+
+# ===========================================================================
+# Magnet (macOS window manager — Mac App Store)
+# ===========================================================================
+
+if [ "$OS" = "macos" ]; then
+    echo "👉  Installing Magnet"
+    if [ ! -d "/Applications/Magnet.app" ]; then
+        if mas_signed_in; then
+            mas install 441258766
+        else
+            echo "    ⚠️  Skipping Magnet — not signed into the Mac App Store."
+        fi
+    else
+        echo "    Magnet already installed."
+    fi
+fi
+
+# ===========================================================================
+# Caffeinated (macOS anti-sleep utility — Mac App Store)
+# ===========================================================================
+
+if [ "$OS" = "macos" ]; then
+    echo "👉  Installing Caffeinated"
+    if [ ! -d "/Applications/Caffeinated.app" ]; then
+        if mas_signed_in; then
+            mas install 1362171212
+        else
+            echo "    ⚠️  Skipping Caffeinated — not signed into the Mac App Store."
+        fi
+    else
+        echo "    Caffeinated already installed."
+    fi
+fi
+
+# ===========================================================================
+# NotchNook (macOS notch utility)
+# ===========================================================================
+
+if [ "$OS" = "macos" ]; then
+    echo "👉  Installing NotchNook"
+    if [ ! -d "/Applications/NotchNook.app" ]; then
+        brew install --cask notchnook
+    else
+        echo "    NotchNook already installed."
+    fi
+fi
+
+# ===========================================================================
+# Superset (AI agents terminal/IDE)
+# ===========================================================================
+
+if [ "$OS" = "macos" ]; then
+    echo "👉  Installing Superset"
+    if [ ! -d "/Applications/Superset.app" ]; then
+        brew install --cask superset
+    else
+        echo "    Superset already installed."
     fi
 fi
 
