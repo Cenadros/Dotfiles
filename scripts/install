@@ -369,12 +369,12 @@ fi
 
 echo "👉  Installing AI tool plugins and skills"
 
-# GSD (Get Stuff Done) — spec-driven development & context engineering
-if cmd_exists npx; then
-    echo "    Installing GSD..."
-    npx -y get-shit-done-cc@latest --all --global 2>/dev/null || true
+# GSD 2 (Get Stuff Done) — spec-driven development & context engineering
+if cmd_exists npm; then
+    echo "    Installing GSD 2..."
+    npm install -g gsd-pi 2>/dev/null || true
 else
-    print_warning "npx not found. Skipping GSD. Install Node.js, then run: npx get-shit-done-cc@latest --all --global"
+    print_warning "npm not found. Skipping GSD 2. Install Node.js 20.6+, then run: npm install -g gsd-pi"
 fi
 
 # Claude Code — MCP servers & plugins
